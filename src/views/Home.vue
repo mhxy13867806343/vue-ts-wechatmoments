@@ -104,7 +104,7 @@
                       <div class="comment-text">{{ comment.content }}</div>
                       <div class="comment-footer">
                         <span class="comment-time">{{ getTimeAgo(comment.timestamp) }}</span>
-                        <span class="reply-btn" @click="handleCommentClick(moment, comment)">回复</span>
+                        <span class="reply-btn reply-btn-main" @click="handleCommentClick(moment, comment)">回复</span>
                       </div>
                     </div>
                   </div>
@@ -581,7 +581,7 @@ onMounted(() => {
   color: #999;
 }
 
-.reply-time {
+.reply-time,.comment-time {
   margin-right: 12px;
 }
 
