@@ -87,6 +87,7 @@
                 评论 {{ moment.comments?.length || 0 }}
               </span>
               <span style="margin-left: 10px" @click="showShareSheet(moment)">分享</span>
+              <span style="margin-left: 10px" @click="showLikesList(moment)">...</span>
             </div>
           </div>
 
@@ -167,32 +168,35 @@
     </van-pull-refresh>
 
     <!-- 点赞列表弹窗 -->
-    <van-action-sheet
-      v-model:show="showLikesList"
-      title="点赞列表"
-      @close="closeLikesList"
+    <van-popup
+      v-model:show="showLikes"
+      round
+      position="bottom"
+      :style="{ height: '40%' }"
     >
-      <div class="likes-list">
-        <div v-if="currentLikes && currentLikes.length > 0">
-          <div
-            v-for="like in currentLikes"
-            :key="like.id"
-            class="like-item"
-          >
-            <van-image
-              round
-              width="40"
-              height="40"
-              :src="like.user.avatar"
-            />
-            <span class="like-username">{{ like.user.name }}</span>
+      <div class="likes-popup">
+        <div class="likes-header">
+          <span>点赞列表({{currentMoment?.likes?.length  ||0}})</span>
+          <van-icon name="cross" @click="showLikes = false" />
+        </div>
+        <div class="likes-list">
+          <template v-if="currentMoment?.likes?.length">
+            <div v-for="userId in currentMoment.likes" :key="userId" class="like-item">
+              <van-image
+                round
+                width="40"
+                height="40"
+                :src="getUserById(userId)?.avatar"
+              />
+              <span class="like-username">{{ getUserById(userId)?.name }}</span>
+            </div>
+          </template>
+          <div v-else class="no-likes">
+            暂无点赞
           </div>
         </div>
-        <div v-else class="no-likes">
-          还没有人点赞
-        </div>
       </div>
-    </van-action-sheet>
+    </van-popup>
 
     <!-- 分享面板 -->
     <van-share-sheet
@@ -309,9 +313,11 @@ import type { IMoment, IComment } from '../types/moment'
 import { showNotify, showToast } from 'vant'
 import { useRouter } from 'vue-router'
 import '../styles/home.css'
+import { useUserStore } from '../store/user'
 
 const router = useRouter()
 const store = useMomentsStore()
+const userStore = useUserStore()
 const { moments } = storeToRefs(store)
 
 // 使用hooks
@@ -449,8 +455,18 @@ const sortedReplies = (replies: IComment[] = []) => {
 }
 
 // 点赞相关
+const showLikes = ref(false)
 const handleLike = (moment: IMoment) => {
   store.toggleLike(moment.id)
+}
+
+const getUserById = (userId: number) => {
+  return userStore.users.find(user => user.id === userId)
+}
+
+const showLikesList = (moment: IMoment) => {
+  currentMoment.value = moment
+  showLikes.value = true
 }
 
 // 组件挂载时初始化数据
@@ -757,5 +773,50 @@ onMounted(() => {
 
 .emoji-picker {
   cursor: pointer;
+}
+
+.likes-popup {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.likes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.likes-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.like-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.like-item:last-child {
+  border-bottom: none;
+}
+
+.like-username {
+  margin-left: 12px;
+  font-size: 14px;
+  color: #333;
+}
+
+.no-likes {
+  text-align: center;
+  color: #999;
+  padding: 32px 0;
 }
 </style>
