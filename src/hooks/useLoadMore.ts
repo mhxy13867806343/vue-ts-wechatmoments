@@ -40,7 +40,7 @@ export const useLoadMore = () => {
       const newData = generateMockData(currentPage.value)
       
       // 模拟数据加载完成的情况
-      if (currentPage.value >= 5) {
+      if (currentPage.value >= 2) {
         finished.value = true
         return []
       }

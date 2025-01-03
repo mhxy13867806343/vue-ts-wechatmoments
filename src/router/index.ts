@@ -1,17 +1,25 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Home from '../views/Home.vue'
+import Publish from '../views/Publish.vue'
+import UserProfile from '../views/UserProfile.vue'
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      name: 'Home',
-      component: () => import('../views/Home.vue')
+      name: 'home',
+      component: Home
     },
     {
       path: '/publish',
-      name: 'Publish',
-      component: () => import('../views/Publish.vue')
+      name: 'publish',
+      component: Publish
+    },
+    {
+      path: '/user/:id',
+      name: 'userProfile',
+      component: UserProfile
     }
   ]
 })

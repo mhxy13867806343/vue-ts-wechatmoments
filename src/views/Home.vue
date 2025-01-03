@@ -30,10 +30,11 @@
               width="40"
               height="40"
               :src="moment.avatar"
+              @click="navigateToUserProfile(moment)"
             />
             <div class="user-detail">
               <div class="username-wrapper">
-                <span class="username">{{ moment.username }}</span>
+                <span class="username" @click="navigateToUserProfile(moment)">{{ moment.username }}</span>
                 <!-- 当前用户的动态显示删除按钮 -->
                 <van-icon
                   v-if="moment.isCurrentUser"
@@ -471,6 +472,12 @@ const showLikesList = (moment: IMoment) => {
 const handlePublish=()=>{
   router.push('/publish')
 }
+
+// 跳转到用户详情页
+const navigateToUserProfile = (moment: IMoment) => {
+  router.push(`/user/${moment.userId || 1}`)
+}
+
 // 组件挂载时初始化数据
 onMounted(() => {
   store.refreshMoments()
