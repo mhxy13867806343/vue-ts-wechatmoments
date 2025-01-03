@@ -14,6 +14,7 @@
 - 分享动态给好友
 
 ![首页](./screenshots/home.png)
+![图片](./screenshots/img.png)
 
 ### 互动功能
 - 点赞/取消点赞
@@ -22,6 +23,7 @@
 - 回复评论
 - 表情选择器
 - @好友功能
+- 用户详情页展示
 
 ![点赞按钮](./screenshots/dianzan.png)
 ![评论区](./screenshots/pinglun.png)
@@ -36,6 +38,9 @@
 ![图片网格1](./screenshots/img_1.png)
 ![图片网格2](./screenshots/img_2.png)
 ![图片网格3](./screenshots/img_3.png)
+![图片网格6](./screenshots/img_6.png)
+![图片网格7](./screenshots/img_7.png)
+![图片网格8](./screenshots/img_8.png)
 
 ### 用户体验
 - 下拉刷新
@@ -44,13 +49,21 @@
 - 响应式设计
 - 时间格式化（如"2小时前"）
 - 加载骨架屏
+- 用户详情页（包含用户统计和动态历史）
 
 ![图片网格4](./screenshots/img_4.png)
 ![图片网格5](./screenshots/img_5.png)
 
+### 用户详情页
+- 用户基本信息展示
+- 个人动态统计
+- 关注/粉丝数据
+- 历史动态列表
+- 互动功能集成
+
 ## 技术栈
 
-- Vue 3
+- Vue 3.2
 - TypeScript
 - Vite
 - Vant UI
