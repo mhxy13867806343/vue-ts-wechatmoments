@@ -1,0 +1,14 @@
+<template>
+  <router-view></router-view>
+</template>
+
+<script setup lang="ts">
+</script>
+
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f7f8fa;
+}
+</style>
