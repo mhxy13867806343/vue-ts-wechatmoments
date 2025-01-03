@@ -10,7 +10,7 @@ import {
   Uploader,
   ActionSheet,
   Popup,
-  Field,
+  Field,Icon,
   ShareSheet
 } from 'vant'
 import 'vant/lib/index.css'
@@ -19,6 +19,7 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
+app.use(Icon)
 app.use(Button)
 app.use(NavBar)
 app.use(Cell)

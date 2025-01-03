@@ -79,7 +79,9 @@
           <div class="moment-footer">
             <div class="action-bar">
               <span @click="handleLike(moment)">
-                点赞 {{ moment.likes?.length || 0 }}
+                点赞
+                <van-icon name="like"  :color="moment.likes?.length?'red':''"/>
+                {{ moment.likes?.length || 0 }}
               </span>
               <span style="margin-left: 10px" @click="toggleComments(moment.id)">
                 评论 {{ moment.comments?.length || 0 }}
@@ -91,9 +93,15 @@
           <!-- 评论区域 -->
           <transition name="slide-fade">
             <div v-if="isCommentsExpanded(moment.id)" class="comments-section">
-              <div v-if="!moment.comments?.length" class="no-comments">
-                <van-empty description="暂无评论" />
-              </div>
+              <template v-if="moment.comments.length === 0">
+                <div class="no-comments">
+                  <span class="no-comments-text">暂无评论</span>
+                  <span class="comment-action" @click.stop="handleCommentClick(moment)">
+                    <van-icon name="edit" />
+                    发表评论
+                  </span>
+                </div>
+              </template>
               <template v-else>
                 <div v-for="comment in sortedComments(moment.comments)" :key="comment.id" class="comment-thread">
                   <!-- 主评论 -->
@@ -104,7 +112,10 @@
                       <div class="comment-text">{{ comment.content }}</div>
                       <div class="comment-footer">
                         <span class="comment-time">{{ getTimeAgo(comment.timestamp) }}</span>
-                        <span class="reply-btn reply-btn-main" @click="handleCommentClick(moment, comment)">回复</span>
+                        <span class="reply-btn reply-btn-main" @click.stop="handleCommentClick(moment, comment)">
+                          <van-icon name="chat-o" />
+                          回复
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -123,13 +134,32 @@
                         </div>
                         <div class="reply-footer">
                           <span class="reply-time">{{ getTimeAgo(reply.timestamp) }}</span>
-                          <span class="reply-btn" @click="handleCommentClick(moment, comment, reply)">回复</span>
+                          <span class="reply-btn" @click.stop="handleCommentClick(moment, comment, reply)">
+                            <van-icon name="chat-o" />
+                            回复
+                          </span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </template>
+
+              <!-- 评论输入框 -->
+              <div v-if="showCommentInput && currentMoment?.id === moment.id" class="comment-input-section">
+                <van-field
+                  v-model="commentText"
+                  rows="2"
+                  autosize
+                  type="textarea"
+                  placeholder="说点什么..."
+                  class="comment-input"
+                >
+                  <template #button>
+                    <van-button size="small" type="primary" @click.stop="handleCommentSubmit">发送</van-button>
+                  </template>
+                </van-field>
+              </div>
             </div>
           </transition>
         </div>
@@ -289,7 +319,7 @@ const { showShare, shareOptions, showShareSheet, onSelectSharePlatform } = useSh
 const { handleImagePreview } = useImagePreview()
 const { loading, refreshing, finished, onLoad, onRefresh } = useLoadMore()
 const { getTimeAgo } = useTimeAgo()
-
+const commentInputRef=  ref<null>()
 // 表情相关
 const showEmojiPicker = ref(false)
 const { categories, currentCategory, getCurrentEmojis, setCategory, insertEmoji } = useEmoji()
@@ -318,10 +348,9 @@ const handleEmojiClick = (emoji: string) => {
 const expandedCommentIds = ref<number[]>([])
 const showCommentInput = ref(false)
 const commentText = ref('')
-const commentInputRef = ref()
 const currentMoment = ref<IMoment | null>(null)
 const replyToComment = ref<IComment | null>(null)
-const replyToUser = ref<IUser | null>(null)
+const replyToUser = ref<{ id: number; name: string } | null>(null)
 
 const isCommentsExpanded = (momentId: number) => {
   return expandedCommentIds.value.includes(momentId)
@@ -338,6 +367,14 @@ const toggleComments = (momentId: number) => {
 
 // 处理评论点击
 const handleCommentClick = (moment: IMoment, comment: IComment, reply?: IComment) => {
+  if (!moment) {
+    console.error('Invalid moment:', moment)
+    return
+  }
+
+  // 阻止事件冒泡
+  event?.stopPropagation()
+
   // 如果是回复评论，确保评论区展开
   if (!isCommentsExpanded(moment.id)) {
     expandedCommentIds.value.push(moment.id)
@@ -348,13 +385,13 @@ const handleCommentClick = (moment: IMoment, comment: IComment, reply?: IComment
   commentText.value = ''
   
   // 如果是回复二级评论，也要指向原评论
-  if (reply) {
+  if (reply && reply.user) {
     replyToUser.value = { 
       id: reply.user.id,
       name: reply.user.name 
     }
     commentText.value = `回复@${reply.user.name}：`
-  } else {
+  } else if (comment && comment.user) {
     replyToUser.value = { 
       id: comment.user.id,
       name: comment.user.name 
@@ -377,6 +414,10 @@ const handleCommentSubmit = async () => {
   try {
     // 提取实际的评论内容（去掉"回复@xxx："的前缀）
     const content = commentText.value.replace(/^回复@.*：/, '').trim()
+    if (!content) {
+      showToast('请输入评论内容')
+      return
+    }
     
     // 添加评论
     await store.addComment(
@@ -399,11 +440,11 @@ const handleCommentSubmit = async () => {
 }
 
 // 评论排序方法
-const sortedComments = (comments: IComment[]) => {
+const sortedComments = (comments: IComment[] = []) => {
   return [...comments].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 }
 
-const sortedReplies = (replies: IComment[]) => {
+const sortedReplies = (replies: IComment[] = []) => {
   return [...replies].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 }
 
@@ -506,14 +547,40 @@ onMounted(() => {
 }
 
 .comments-section {
-  margin-top: 10px;
-  background: #f8f8f8;
-  border-radius: 4px;
-  padding: 8px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background-color: #f8f8f8;
+  border-radius: 8px;
+}
+
+.no-comments {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  color: #999;
+  font-size: 14px;
+  background-color: #fff;
+  border-radius: 8px;
+}
+
+.comment-action {
+  color: #1989fa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.comment-action:hover {
+  opacity: 0.8;
 }
 
 .comment-thread {
   margin-bottom: 16px;
+  background-color: #fff;
+  padding: 12px;
+  border-radius: 8px;
 }
 
 .comment-main {
@@ -529,11 +596,14 @@ onMounted(() => {
 .comment-user {
   font-weight: 500;
   color: #333;
+  font-size: 14px;
 }
 
 .comment-text {
   margin: 4px 0;
   color: #666;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .comment-footer {
@@ -546,12 +616,22 @@ onMounted(() => {
 .replies-section {
   margin-left: 40px;
   margin-top: 8px;
+  padding: 8px;
+  background-color: #f8f8f8;
+  border-radius: 8px;
 }
 
 .reply-item {
   display: flex;
   align-items: flex-start;
   margin-bottom: 8px;
+  padding: 8px;
+  background-color: #fff;
+  border-radius: 6px;
+}
+
+.reply-item:last-child {
+  margin-bottom: 0;
 }
 
 .reply-content {
@@ -561,6 +641,8 @@ onMounted(() => {
 
 .reply-text {
   color: #666;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .reply-user {
@@ -581,52 +663,33 @@ onMounted(() => {
   color: #999;
 }
 
-.reply-time,.comment-time {
+.reply-time, .comment-time {
   margin-right: 12px;
 }
 
 .reply-btn {
   color: #666;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .reply-btn:hover {
   color: #1989fa;
 }
 
-.delete-icon {
-  color: #999;
-  font-size: 16px;
-  padding: 4px;
+.comment-input-section {
+  margin-top: 12px;
 }
 
-.likes-list {
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 16px;
+.comment-input {
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.like-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 0;
-  justify-content: center;
-}
-
-.like-username {
-  margin-left: 12px;
-  font-size: 16px;
-  color: #333;
-}
-
-.no-likes {
-  text-align: center;
-  color: #999;
-  padding: 32px 0;
-  font-size: 14px;
-}
-
-/* 评论展开/收起动画 */
+/* 动画效果 */
 .slide-fade-enter-active,
 .slide-fade-leave-active {
   transition: all 0.3s ease;
@@ -634,8 +697,8 @@ onMounted(() => {
 
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-  opacity: 0;
   transform: translateY(-10px);
+  opacity: 0;
 }
 
 .emoji-container {
