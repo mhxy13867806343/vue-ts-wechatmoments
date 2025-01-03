@@ -35,9 +35,9 @@
               <div class="username-wrapper">
                 <span class="username">{{ moment.username }}</span>
                 <!-- 当前用户的动态显示删除按钮 -->
-                <van-icon 
-                  v-if="moment.isCurrentUser" 
-                  name="delete" 
+                <van-icon
+                  v-if="moment.isCurrentUser"
+                  name="delete"
                   class="delete-icon"
                   @click="handleDelete(moment.id)"
                 />
@@ -48,10 +48,10 @@
 
           <div class="moment-content" @click="handleCommentClick(moment)">
             <p>{{ moment.content }}</p>
-            
+
             <div class="media-content" v-if="moment.images && moment.images.length">
               <div class="image-grid" :class="{ 'more-than-nine': moment.images.length > 9 }">
-                <div 
+                <div
                   v-for="(img, index) in moment.images.slice(0, 9)"
                   :key="index"
                   class="image-item"

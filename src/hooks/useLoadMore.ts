@@ -44,7 +44,7 @@ export const useLoadMore = () => {
         finished.value = true
         return []
       }
-
+      loading.value =true
       currentPage.value++
       return newData
     } catch (error) {

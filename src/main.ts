@@ -11,7 +11,8 @@ import {
   ActionSheet,
   Popup,
   Field,Icon,
-  ShareSheet
+  ShareSheet,
+  List ,PullRefresh
 } from 'vant'
 import 'vant/lib/index.css'
 
@@ -29,5 +30,7 @@ app.use(ActionSheet)
 app.use(Popup)
 app.use(Field)
 app.use(ShareSheet)
+app.use(List)
+app.use(PullRefresh)
 
 app.mount('#app')
