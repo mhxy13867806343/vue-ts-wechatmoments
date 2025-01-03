@@ -468,7 +468,9 @@ const showLikesList = (moment: IMoment) => {
   currentMoment.value = moment
   showLikes.value = true
 }
-
+const handlePublish=()=>{
+  router.push('/publish')
+}
 // 组件挂载时初始化数据
 onMounted(() => {
   store.refreshMoments()
