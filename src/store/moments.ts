@@ -116,6 +116,10 @@ export const useMomentsStore = defineStore('moments', {
       this.loading = false
     },
 
+    setMoments(moments: IMoment[]) {
+      this.moments = moments
+    },
+
     async publishMoment(content: string, images: string[] = [], video: string | null = null) {
       const newMoment: IMoment = {
         id: this.moments.length + 1,
