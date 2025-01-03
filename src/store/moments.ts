@@ -115,30 +115,31 @@ export const useMomentsStore = defineStore('moments', {
     },
 
     // 添加评论或回复
-    async addComment(momentId: number, content: string, replyTo?: IComment) {
+    addComment(momentId: number, content: string, replyTo?: { id: number; name: string }, parentCommentId?: number) {
       const moment = this.moments.find(m => m.id === momentId)
-      if (!moment) return
+      if (!moment || !moment.comments) return
 
       const newComment: IComment = {
         id: Date.now(),
-        user: this.currentUser,
-        content: replyTo ? `@${replyTo.user.name} ${content}` : content,
+        user: this.currentUser!,
+        content,
         timestamp: new Date().toISOString(),
         replies: [],
-        replyTo: replyTo ? replyTo.user : undefined
+        replyTo
       }
 
-      if (replyTo) {
-        // 如果是回复评论，找到原始评论（一级评论）
-        const parentComment = moment.comments.find(c => c.id === replyTo.id || c.replies.some(r => r.id === replyTo.id))
+      // 如果指定了父评论ID，说明是回复其他评论
+      if (parentCommentId) {
+        const parentComment = moment.comments.find(c => c.id === parentCommentId)
         if (parentComment) {
-          // 总是添加到一级评论的回复列表中
+          if (!parentComment.replies) parentComment.replies = []
           parentComment.replies.push(newComment)
+          return
         }
-      } else {
-        // 如果是主评论
-        moment.comments.push(newComment)
       }
+
+      // 如果没有父评论ID或找不到父评论，添加为主评论
+      moment.comments.push(newComment)
     },
 
     // 点赞/取消点赞

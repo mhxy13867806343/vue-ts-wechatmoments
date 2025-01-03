@@ -91,62 +91,45 @@
           <!-- 评论区域 -->
           <transition name="slide-fade">
             <div v-if="isCommentsExpanded(moment.id)" class="comments-section">
-              <div
-                v-for="comment in sortedComments(moment.comments)"
-                :key="comment.id"
-                class="comment-thread"
-              >
-                <!-- 主评论 -->
-                <div class="comment-main">
-                  <van-image
-                    round
-                    width="32"
-                    height="32"
-                    :src="comment.user.avatar"
-                    class="avatar"
-                  />
-                  <div class="comment-content">
-                    <div class="comment-user">{{ comment.user.name }}</div>
-                    <div class="comment-text">{{ comment.content }}</div>
-                    <div class="comment-footer">
-                      <span class="comment-time">{{ getTimeAgo(comment.timestamp) }}</span>
-                      <span class="reply-btn" @click="handleCommentClick(moment, comment)">回复</span>
+              <div v-if="!moment.comments?.length" class="no-comments">
+                <van-empty description="暂无评论" />
+              </div>
+              <template v-else>
+                <div v-for="comment in sortedComments(moment.comments)" :key="comment.id" class="comment-thread">
+                  <!-- 主评论 -->
+                  <div class="comment-main">
+                    <van-image round width="32" height="32" :src="comment.user.avatar" class="avatar" />
+                    <div class="comment-content">
+                      <div class="comment-user">{{ comment.user.name }}</div>
+                      <div class="comment-text">{{ comment.content }}</div>
+                      <div class="comment-footer">
+                        <span class="comment-time">{{ getTimeAgo(comment.timestamp) }}</span>
+                        <span class="reply-btn" @click="handleCommentClick(moment, comment)">回复</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <!-- 回复列表 -->
-                <div v-if="comment.replies && comment.replies.length" class="replies-section">
-                  <div
-                    v-for="reply in sortedReplies(comment.replies)"
-                    :key="reply.id"
-                    class="reply-item"
-                  >
-                    <div class="reply-main">
-                      <van-image
-                        round
-                        width="24"
-                        height="24"
-                        :src="reply.user.avatar"
-                        class="avatar"
-                      />
+                  <!-- 回复列表 -->
+                  <div v-if="comment.replies?.length" class="replies-section">
+                    <div v-for="reply in sortedReplies(comment.replies)" :key="reply.id" class="reply-item">
+                      <van-image round width="24" height="24" :src="reply.user.avatar" class="avatar" />
                       <div class="reply-content">
-                        <div class="reply-user">{{ reply.user.name }}</div>
                         <div class="reply-text">
+                          <span class="reply-user">{{ reply.user.name }}</span>
                           <template v-if="reply.replyTo">
-                            回复 <span class="reply-to">@{{ reply.replyTo.name }}</span>：
+                            <span class="reply-to">回复 @{{ reply.replyTo.name }}：</span>
                           </template>
                           {{ reply.content }}
                         </div>
                         <div class="reply-footer">
                           <span class="reply-time">{{ getTimeAgo(reply.timestamp) }}</span>
-                          <span class="reply-btn" @click="handleCommentClick(moment, comment)">回复</span>
+                          <span class="reply-btn" @click="handleCommentClick(moment, comment, reply)">回复</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </template>
             </div>
           </transition>
         </div>
@@ -353,71 +336,66 @@ const toggleComments = (momentId: number) => {
   }
 }
 
-// 打开评论输入框
-const openCommentInput = (moment: IMoment, comment?: IComment) => {
-  currentMoment.value = moment
-  if (comment) {
-    replyToComment.value = comment
-    replyToUser.value = comment.user
-  } else {
-    replyToComment.value = null
-    replyToUser.value = null
+// 处理评论点击
+const handleCommentClick = (moment: IMoment, comment: IComment, reply?: IComment) => {
+  // 如果是回复评论，确保评论区展开
+  if (!isCommentsExpanded(moment.id)) {
+    expandedCommentIds.value.push(moment.id)
   }
+  
+  // 打开评论输入框，设置回复信息
+  currentMoment.value = moment
+  commentText.value = ''
+  
+  // 如果是回复二级评论，也要指向原评论
+  if (reply) {
+    replyToUser.value = { 
+      id: reply.user.id,
+      name: reply.user.name 
+    }
+    commentText.value = `回复@${reply.user.name}：`
+  } else {
+    replyToUser.value = { 
+      id: comment.user.id,
+      name: comment.user.name 
+    }
+    commentText.value = `回复@${comment.user.name}：`
+  }
+  
+  // 记录父评论ID
+  replyToComment.value = comment
   showCommentInput.value = true
-  nextTick(() => {
-    commentInputRef.value?.focus()
-  })
 }
 
 // 处理评论提交
 const handleCommentSubmit = async () => {
-  if (!commentText.value.trim() || !currentMoment.value) return
-  
+  if (!commentText.value.trim() || !currentMoment.value) {
+    showToast('请输入评论内容')
+    return
+  }
+
   try {
-    if (replyToComment.value) {
-      // 回复评论
-      await store.addComment(
-        currentMoment.value.id,
-        commentText.value,
-        replyToComment.value
-      )
-    } else {
-      // 发表新评论
-      await store.addComment(
-        currentMoment.value.id,
-        commentText.value
-      )
-    }
+    // 提取实际的评论内容（去掉"回复@xxx："的前缀）
+    const content = commentText.value.replace(/^回复@.*：/, '').trim()
     
-    // 确保评论展开
-    if (!isCommentsExpanded(currentMoment.value.id)) {
-      expandedCommentIds.value.push(currentMoment.value.id)
-    }
-    
-    // 重置状态
+    // 添加评论
+    await store.addComment(
+      currentMoment.value.id,
+      content,
+      replyToUser.value,
+      replyToComment.value?.id
+    )
+
+    // 清空输入框和状态
     commentText.value = ''
     showCommentInput.value = false
-    currentMoment.value = null
-    replyToComment.value = null
     replyToUser.value = null
-    
+    replyToComment.value = null
+    showToast('评论成功')
   } catch (error) {
-    console.error('Failed to submit comment:', error)
-    showNotify('评论失败，请重试')
+    console.error('评论失败:', error)
+    showToast('评论失败')
   }
-}
-
-const handleCommentClick = (moment: IMoment, comment?: IComment) => {
-  // 确保评论展开
-  if (!isCommentsExpanded(moment.id)) {
-    expandedCommentIds.value.push(moment.id)
-  }
-  openCommentInput(moment, comment)
-}
-
-// 点赞相关
-const handleLike = (moment: IMoment) => {
-  store.toggleLike(moment.id)
 }
 
 // 评论排序方法
@@ -427,6 +405,11 @@ const sortedComments = (comments: IComment[]) => {
 
 const sortedReplies = (replies: IComment[]) => {
   return [...replies].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+}
+
+// 点赞相关
+const handleLike = (moment: IMoment) => {
+  store.toggleLike(moment.id)
 }
 
 // 组件挂载时初始化数据
@@ -536,38 +519,70 @@ onMounted(() => {
 .comment-main {
   display: flex;
   align-items: flex-start;
-  padding: 8px;
-  background-color: #f8f8f8;
-  border-radius: 4px;
-  margin: 4px 0;
 }
 
 .comment-content {
-  margin-left: 8px;
   flex: 1;
+  margin-left: 8px;
 }
 
 .comment-user {
   font-weight: 500;
-  font-size: 14px;
   color: #333;
 }
 
 .comment-text {
-  font-size: 14px;
   margin: 4px 0;
+  color: #666;
 }
 
 .comment-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   font-size: 12px;
   color: #999;
 }
 
-.comment-time {
-  margin-right: 8px;
+.replies-section {
+  margin-left: 40px;
+  margin-top: 8px;
+}
+
+.reply-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.reply-content {
+  flex: 1;
+  margin-left: 8px;
+}
+
+.reply-text {
+  color: #666;
+}
+
+.reply-user {
+  font-weight: 500;
+  color: #333;
+}
+
+.reply-to {
+  color: #1989fa;
+  margin: 0 4px;
+}
+
+.reply-footer {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #999;
+}
+
+.reply-time {
+  margin-right: 12px;
 }
 
 .reply-btn {
@@ -577,120 +592,6 @@ onMounted(() => {
 
 .reply-btn:hover {
   color: #1989fa;
-}
-
-.replies-section {
-  margin-left: 40px;
-  margin-top: 4px;
-}
-
-.reply-item {
-  display: flex;
-  align-items: flex-start;
-  padding: 8px;
-  background-color: #f8f8f8;
-  border-radius: 4px;
-  margin: 4px 0;
-}
-
-.reply-main {
-  display: flex;
-  align-items: flex-start;
-  padding: 8px;
-  background-color: #f8f8f8;
-  border-radius: 4px;
-  margin: 4px 0;
-}
-
-.reply-content {
-  margin-left: 8px;
-  flex: 1;
-}
-
-.reply-user {
-  font-weight: 500;
-  font-size: 14px;
-  color: #333;
-}
-
-.reply-text {
-  font-size: 14px;
-  margin: 4px 0;
-}
-
-.reply-to {
-  color: #1989fa;
-  font-weight: 500;
-}
-
-.reply-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #999;
-}
-
-.reply-time {
-  margin-right: 8px;
-}
-
-.no-comments {
-  text-align: center;
-  color: #999;
-  padding: 16px;
-  cursor: pointer;
-}
-
-.comment-input-container {
-  padding: 10px;
-}
-
-.emoji-panel {
-  padding: 10px 0;
-  border-top: 1px solid #eee;
-}
-
-.emoji-tabs {
-  display: flex;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 10px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.emoji-tab {
-  padding: 8px 12px;
-  font-size: 14px;
-  color: #666;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.emoji-tab.active {
-  color: #1989fa;
-  border-bottom: 2px solid #1989fa;
-}
-
-.emoji-content {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 8px;
-  padding: 0 10px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.emoji-item {
-  font-size: 24px;
-  text-align: center;
-  cursor: pointer;
-  user-select: none;
-  transition: transform 0.2s;
-}
-
-.emoji-item:hover {
-  transform: scale(1.2);
 }
 
 .delete-icon {
