@@ -1,68 +1,40 @@
-import { ref, onUnmounted } from 'vue'
-import { formatDate } from '../utils/dateFormat'
+import { ref, computed } from 'vue'
 
-export function useTimeAgo(timestamp: string) {
-  const timeAgo = ref('')
-  let animationFrameId: number
-
-  const updateTimeAgo = () => {
+export function useTimeAgo() {
+  const getTimeAgo = (timestamp: string) => {
     const now = new Date()
-    const past = new Date(timestamp)
-    const diff = Math.floor((now.getTime() - past.getTime()) / 1000)
+    const date = new Date(timestamp)
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
 
-    if (diff < 10) {
-      timeAgo.value = '刚刚'
-      // 3秒后更新为具体秒数
-      animationFrameId = requestAnimationFrame(() => {
-        if (diff < 60) {
-          timeAgo.value = `${diff}秒前`
-        }
-      })
-      return
+    if (seconds < 60) {
+      return '刚刚'
     }
 
-    if (diff < 60) {
-      timeAgo.value = `${diff}秒前`
-      // 继续更新直到超过60秒
-      animationFrameId = requestAnimationFrame(updateTimeAgo)
-      return
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) {
+      return `${minutes}分钟前`
     }
 
-    if (diff < 3600) {
-      timeAgo.value = `${Math.floor(diff / 60)}分钟前`
-      return
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) {
+      return `${hours}小时前`
     }
 
-    if (diff < 86400) {
-      timeAgo.value = `${Math.floor(diff / 3600)}小时前`
-      return
+    const days = Math.floor(hours / 24)
+    if (days < 30) {
+      return `${days}天前`
     }
 
-    if (diff < 2592000) {
-      timeAgo.value = `${Math.floor(diff / 86400)}天前`
-      return
+    const months = Math.floor(days / 30)
+    if (months < 12) {
+      return `${months}个月前`
     }
 
-    if (diff < 31536000) {
-      timeAgo.value = `${Math.floor(diff / 2592000)}个月前`
-      return
-    }
-
-    // 使用格式化函数来确保跨平台兼容性
-    timeAgo.value = formatDate(past)
+    const years = Math.floor(days / 365)
+    return `${years}年前`
   }
 
-  // 初始更新
-  updateTimeAgo()
-
-  // 组件卸载时清除动画帧
-  onUnmounted(() => {
-    if (animationFrameId) {
-      cancelAnimationFrame(animationFrameId)
-    }
-  })
-
   return {
-    timeAgo
+    getTimeAgo
   }
 }

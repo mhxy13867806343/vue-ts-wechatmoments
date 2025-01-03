@@ -23,16 +23,14 @@ const generateDemoMoments = (): IMoment[] => {
       ],
       video: null,
       timestamp: new Date(Date.now() - 3600000).toISOString(),
-      likesList: [
-        { id: 1, user: mockUsers[1], timestamp: new Date(Date.now() - 1800000).toISOString() },
-        { id: 2, user: mockUsers[2], timestamp: new Date(Date.now() - 1700000).toISOString() }
-      ],
+      likes: [],
       comments: [
         {
           id: 1,
           user: mockUsers[1],
           content: 'Great sharing! The TypeScript session was my favorite 👍',
-          timestamp: new Date(Date.now() - 1600000).toISOString()
+          timestamp: new Date(Date.now() - 1600000).toISOString(),
+          replies: []
         },
         {
           id: 2,
@@ -44,7 +42,8 @@ const generateDemoMoments = (): IMoment[] => {
               id: 3,
               user: mockUsers[0],
               content: '@Charlie Liu You should definitely come next time!',
-              timestamp: new Date(Date.now() - 1400000).toISOString()
+              timestamp: new Date(Date.now() - 1400000).toISOString(),
+              replyTo: mockUsers[2]
             }
           ]
         }
@@ -61,29 +60,8 @@ const generateDemoMoments = (): IMoment[] => {
       ],
       video: null,
       timestamp: new Date(Date.now() - 7200000).toISOString(),
-      likesList: [
-        { id: 3, user: mockUsers[0], timestamp: new Date(Date.now() - 3600000).toISOString() },
-        { id: 4, user: mockUsers[3], timestamp: new Date(Date.now() - 3500000).toISOString() },
-        { id: 5, user: mockUsers[4], timestamp: new Date(Date.now() - 3400000).toISOString() }
-      ],
+      likes: [],
       comments: []
-    },
-    {
-      id: 3,
-      user: mockUsers[2],
-      content: 'Check out my new coding tutorial video! 💻 Learning Vue 3 has never been easier.',
-      images: [],
-      video: 'https://example.com/demo-video.mp4',
-      timestamp: new Date(Date.now() - 10800000).toISOString(),
-      likesList: [],
-      comments: [
-        {
-          id: 4,
-          user: mockUsers[4],
-          content: 'Thanks for sharing! Very helpful tutorial 🙏',
-          timestamp: new Date(Date.now() - 5400000).toISOString()
-        }
-      ]
     }
   ]
 }
@@ -92,7 +70,8 @@ export const useMomentsStore = defineStore('moments', {
   state: () => ({
     moments: generateDemoMoments(),
     loading: false,
-    refreshing: false
+    refreshing: false,
+    currentUser: mockUsers[0] // 当前用户
   }),
 
   actions: {
@@ -120,18 +99,65 @@ export const useMomentsStore = defineStore('moments', {
       this.moments = moments
     },
 
+    // 发布新动态
     async publishMoment(content: string, images: string[] = [], video: string | null = null) {
       const newMoment: IMoment = {
         id: this.moments.length + 1,
-        user: mockUsers[0], // Current user
+        user: this.currentUser,
         content,
         images,
         video,
         timestamp: new Date().toISOString(),
-        likesList: [],
+        likes: [],
         comments: []
       }
       this.moments.unshift(newMoment)
+    },
+
+    // 添加评论或回复
+    async addComment(momentId: number, content: string, replyTo?: IComment) {
+      const moment = this.moments.find(m => m.id === momentId)
+      if (!moment) return
+
+      const newComment: IComment = {
+        id: Date.now(),
+        user: this.currentUser,
+        content: replyTo ? `@${replyTo.user.name} ${content}` : content,
+        timestamp: new Date().toISOString(),
+        replies: [],
+        replyTo: replyTo ? replyTo.user : undefined
+      }
+
+      if (replyTo) {
+        // 如果是回复评论，找到原始评论（一级评论）
+        const parentComment = moment.comments.find(c => c.id === replyTo.id || c.replies.some(r => r.id === replyTo.id))
+        if (parentComment) {
+          // 总是添加到一级评论的回复列表中
+          parentComment.replies.push(newComment)
+        }
+      } else {
+        // 如果是主评论
+        moment.comments.push(newComment)
+      }
+    },
+
+    // 点赞/取消点赞
+    toggleLike(momentId: number) {
+      const moment = this.moments.find(m => m.id === momentId)
+      if (!moment) return
+
+      const userLikeIndex = moment.likes.findIndex(like => like.user.id === this.currentUser.id)
+      if (userLikeIndex === -1) {
+        // 添加点赞
+        moment.likes.push({
+          id: Date.now(),
+          user: this.currentUser,
+          timestamp: new Date().toISOString()
+        })
+      } else {
+        // 取消点赞
+        moment.likes.splice(userLikeIndex, 1)
+      }
     }
   }
 })

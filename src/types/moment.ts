@@ -10,6 +10,7 @@ export interface IComment {
   content: string
   timestamp: string
   replies?: IComment[]
+  replyTo?: IUser
 }
 
 export interface ILike {
@@ -20,23 +21,19 @@ export interface ILike {
 
 export interface IMoment {
   id: number
-  avatar: string
-  username: string
+  user: IUser
   content: string
-  timestamp: string
-  likes: number
-  likesList: ILike[]
-  comments: number
-  commentsList: IComment[]
-  location?: string
   images?: string[]
-  video?: string
-  isPrivate?: boolean;
-  isCurrentUser?: boolean // 新增字段，标识是否为当前用户的动态
+  video?: string | null
+  timestamp: string
+  likes: ILike[]
+  comments: IComment[]
+  location?: string
+  isPrivate?: boolean
 }
 
 export interface IPublishOptions {
-  privacy: string;
-  location: string;
-  shareToThirdParty: boolean;
+  privacy: string
+  location: string
+  shareToThirdParty: boolean
 }
